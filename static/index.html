@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniVoice Lab</title>
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+<header>
+  <h1>OmniVoice <span>Lab</span></h1>
+  <div id="modelStatus" class="pill">conectando…</div>
+</header>
+
+<main>
+  <section class="card" id="gpuCard">
+    <div class="card-head"><h2>GPU</h2><small id="gpuName">—</small></div>
+    <div class="stats">
+      <div class="stat"><label>Uso</label><b id="gUtil">–</b></div>
+      <div class="stat"><label>VRAM</label><b id="gMem">–</b></div>
+      <div class="stat"><label>PyTorch alloc</label><b id="gTorch">–</b></div>
+      <div class="stat"><label>Temp</label><b id="gTemp">–</b></div>
+      <div class="stat"><label>Energia</label><b id="gPower">–</b></div>
+      <div class="stat"><label>Clock SM</label><b id="gClock">–</b></div>
+    </div>
+    <canvas id="gpuChart" height="90"></canvas>
+    <div class="legend"><span class="l-util">uso %</span><span class="l-mem">VRAM %</span></div>
+  </section>
+
+  <section class="card" id="voicesCard">
+    <div class="card-head"><h2>Vozes de referência</h2><small>3–10 s é o ideal</small></div>
+    <div id="drop" class="drop">
+      <p>Arraste arquivos de áudio aqui (wav, mp3, m4a, ogg…) ou</p>
+      <label class="btn">Escolher arquivos<input type="file" id="fileInput" accept="audio/*,video/*" multiple hidden></label>
+      <button class="btn ghost" id="recBtn">● Gravar microfone</button>
+    </div>
+    <div id="pending"></div>
+    <ul id="voiceList" class="voice-list"></ul>
+  </section>
+
+  <section class="card" id="genCard">
+    <div class="card-head"><h2>Gerar fala</h2></div>
+    <div class="tabs" id="modeTabs">
+      <button data-mode="clone" class="active">Clonar voz</button>
+      <button data-mode="design">Voice design</button>
+      <button data-mode="auto">Auto</button>
+    </div>
+    <div class="mode-clone"><p class="hint">Selecione uma ou mais vozes na lista acima (checkbox). Um job é criado por voz.</p></div>
+    <div class="mode-design" hidden>
+      <label>Instrução (atributos separados por vírgula)</label>
+      <input id="instruct" placeholder="female, young adult, low pitch, british accent">
+    </div>
+    <label>Texto</label>
+    <textarea id="text" rows="5" placeholder="Digite o texto a ser falado…">Olá! Este é um teste local de clonagem de voz com o OmniVoice.</textarea>
+    <div class="row">
+      <div><label>Idioma</label><select id="language"><option value="">Auto</option></select></div>
+      <div><label>Passos (num_step)</label><input id="num_step" type="number" value="32" min="4" max="128"></div>
+      <div><label>Guidance</label><input id="guidance_scale" type="number" value="2.0" step="0.1"></div>
+      <div><label>Velocidade</label><input id="speed" type="number" value="" step="0.05" placeholder="1.0"></div>
+      <div><label>Duração fixa (s)</label><input id="duration" type="number" value="" step="0.5" placeholder="auto"></div>
+      <div><label>Seed</label><input id="seed" type="number" placeholder="aleatório"></div>
+    </div>
+    <div class="row pauses">
+      <div><label>Pausas na pontuação</label>
+        <select id="pause_mode">
+          <option value="natural">Natural (o modelo decide)</option>
+          <option value="split">Garantidas (divide e insere silêncio)</option>
+        </select>
+      </div>
+      <div class="pause-opt"><label>após . ! ? (ms)</label><input id="pause_sentence_ms" type="number" value="350" step="25" min="0"></div>
+      <div class="pause-opt"><label>após vírgula (ms, 0 = não dividir)</label><input id="pause_comma_ms" type="number" value="120" step="10" min="0"></div>
+    </div>
+    <p class="hint" id="pauseHint"></p>
+    <details>
+      <summary>Avançado</summary>
+      <div class="row">
+        <div><label>t_shift</label><input id="t_shift" type="number" value="0.1" step="0.05"></div>
+        <div><label>class_temperature</label><input id="class_temperature" type="number" value="0" step="0.1"></div>
+        <div><label>position_temperature</label><input id="position_temperature" type="number" value="5" step="0.5"></div>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="denoise" checked> denoise</label>
+        <label><input type="checkbox" id="postprocess" checked> remover silêncios</label>
+        <label><input type="checkbox" id="normalize_text"> normalizar texto (números → palavras)</label>
+      </div>
+    </details>
+    <div class="actions">
+      <button class="btn primary" id="genBtn">Gerar</button>
+      <span id="genMsg" class="hint"></span>
+    </div>
+  </section>
+
+  <section class="card wide" id="jobsCard">
+    <div class="card-head">
+      <h2>Jobs</h2>
+      <div class="head-right">
+        <small id="queueInfo"></small>
+        <label class="inline">Formato do download
+          <select id="exportFmt">
+            <option value="wav">WAV (sem perda)</option>
+            <option value="mp3">MP3</option>
+            <option value="opus">OGG (Opus)</option>
+            <option value="vorbis">OGG (Vorbis)</option>
+            <option value="flac">FLAC (sem perda)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div id="jobs"></div>
+  </section>
+</main>
+
+<template id="jobTpl">
+  <div class="job">
+    <div class="job-top">
+      <div class="job-title"></div>
+      <div class="job-status pill"></div>
+    </div>
+    <div class="job-text"></div>
+    <div class="bar"><div class="fill"></div><span class="pct"></span></div>
+    <div class="job-metrics"></div>
+    <div class="job-bottom">
+      <audio controls preload="none"></audio>
+      <div class="job-btns">
+        <a class="btn ghost small dl" download>baixar</a>
+        <button class="btn ghost small cancel">cancelar</button>
+        <button class="btn ghost small del">remover</button>
+      </div>
+    </div>
+    <div class="job-err"></div>
+  </div>
+</template>
+
+<script src="app.js?v=6"></script>
+</body>
+</html>

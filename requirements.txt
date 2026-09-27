@@ -1,0 +1,10 @@
+omnivoice @ git+https://github.com/k2-fsa/OmniVoice@08be0b4ccbac3e13e374e86fbfead4b4cac343e2
+transformers==5.17.0
+huggingface-hub==1.33.0
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+nvidia-ml-py==13.615.71
+onnx-asr[cpu,hub]==0.12.0
+soundfile==0.14.0
+numpy==2.4.6
